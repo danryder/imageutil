@@ -10,6 +10,7 @@
 
 import sys
 import os
+import errno
 import subprocess
 import shutil
 from multiprocessing import Pool
@@ -44,6 +45,7 @@ def checkAndRotate(path):
         rotate = '180'
 
     if rotate is not None:
+        infile = path
         if backup_dir is not None:
             # parallel backup directory
             bak_dir = os.path.join(backup_dir, os.path.dirname(path))
@@ -56,9 +58,9 @@ def checkAndRotate(path):
                     raise e
 
             bak_file = os.path.join(bak_dir, os.path.basename(path))
+            print "copying %s to backup %s" % (infile, bak_file)
             shutil.copyfile(infile, bak_file)
 
-        infile = path
         rotfile = path + '.rotated'
         cmd = ['jpegtran', '-copy', 'all', '-rotate', rotate, '-outfile', rotfile, infile ]
 
@@ -80,16 +82,16 @@ if __name__ == '__main__':
     parser.add_argument("dir")
     parser.add_argument("--processes", type=int, default=8,
                         help="use this many concurrent processes")
-    parser.add_argument("--backup", default=None,
+    parser.add_argument("--backupdir", default=None,
                         help="create backup copies here")
     args = parser.parse_args()
-    backup = args.backup
-    if backup is not None:
-        os.makedirs(backup)
 
-    if args.processes > 1:
-        p = Pool(args.processes)
-        p.map(checkAndRotate, jpgutil.findJpgs(args.dir))
-    else:
-        for j in jpgutil.findJpgs(args.dir):
-            checkAndRotate(j)
+    if not os.path.isdir(args.dir):
+        raise Exception("%s not a directory,"% args.dir)
+
+    backup_dir = args.backupdir
+    if backup_dir is not None:
+        os.makedirs(backup_dir)
+
+    p = Pool(args.processes)
+    p.map(checkAndRotate, jpgutil.findJpgs(args.dir))

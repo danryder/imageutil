@@ -8,15 +8,16 @@ import jpgutil
 from multiprocessing import Pool
 
 dst = None
+moveRaws = False
 
 newname = re.compile(r'''^\s*\+ FileName = '([^']*)'.*''')
 
-def moveByDate(src):
-    print "move by date", src
+def dateMoveJpg(src):
+    print "move by date", src, "to", dst
     p = subprocess.Popen(['exiftool', '-v5', '-FileName<DateTimeOriginal',
-                    '-d', 
-                    '%s/%%Y/%%m/%%d/%%Y%%m%%d_%%H%%M%%S_%%%%f%%%%-c.%%%%e' 
-                    % dst, src,],
+                          '-d', 
+                          '%s/%%Y/%%m/%%d/%%Y%%m%%d_%%H%%M%%S_%%%%f%%%%-c.%%%%e' 
+                          % dst, src,],
                           stdout = subprocess.PIPE,
                           stderr = subprocess.PIPE)
     out, err = p.communicate()
@@ -40,12 +41,13 @@ def moveByDate(src):
         raise Exception("New file '%s' not found" % newfname)
 
     # check for any accompanying .NEF
-    if src.endswith('.JPG'):
-        raw=src[:-3] + 'NEF'
-        if os.path.exists(raw):
-            newraw = newfname[:-3] + 'NEF'
-            print "Moving RAW %s alongside to %s" % (raw, newraw)
-            os.rename(raw, newraw)
+    if moveRaws:
+        if src.endswith('.JPG'):
+            raw=src[:-3] + 'NEF'
+            if os.path.exists(raw):
+                newraw = newfname[:-3] + 'NEF'
+                print "Moving RAW %s alongside to %s" % (raw, newraw)
+                os.rename(raw, newraw)
 
 
 if __name__ == '__main__':
@@ -54,20 +56,19 @@ if __name__ == '__main__':
     parser.add_argument("dst")
     parser.add_argument("--processes", type=int, default=8,
                         help="use this many concurrent processes")
+    parser.add_argument("--moveraws", action="store_true",
+                        help="also move any corresponding RAW images")
     args = parser.parse_args()
 
     if not os.path.isdir(args.src):
-        raise Exception("Source %s not valid directory,"% args.src)
+        raise Exception("%s not a directory"% args.src)
 
     dst = args.dst
     if not os.path.exists(args.dst):
+        print "Creating output directory:", args.dst
         os.makedirs(args.dst)
 
-    if args.processes > 1:
-        print "Multi", args.src
-        p = Pool(args.processes)
-        p.map(moveByDate, jpgutil.findJpgs(args.src))
-    else:
-        print "single"
-        for j in jpgutil.findJpgs(args.src):
-            moveByDate(j)
+    moveraws = args.moveraws
+
+    p = Pool(args.processes)
+    p.map(dateMoveJpg, jpgutil.findJpgs(args.src))
