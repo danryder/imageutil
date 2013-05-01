@@ -14,9 +14,7 @@ import subprocess
 import shutil
 from multiprocessing import Pool
 import argparse
-
-def is_jpg(entity_path):
-    return os.path.splitext(entity_path)[1].lower() in ['.jpg', '.jpeg']
+import jpgutil
 
 backup_dir = None
 
@@ -25,7 +23,7 @@ def checkAndRotate(path):
     Check the Orientation of an image
     If it's not normal, rotate and reset orientation
     """
-    if not is_jpg(path):
+    if not jpgutil.is_jpg(path):
         return
 
     cmd = [ 'exiftool', '-Orientation', '-S', path ]
@@ -77,21 +75,6 @@ def checkAndRotate(path):
         # if no errors, overwrite original file
         os.rename(rotfile, infile)
 
-def findJpgs(paths):
-    for path in paths:
-        # handle simple case -- files
-        if os.path.isfile(path):
-            if is_jpg(path):
-                yield path
-
-        # crawl directories
-        elif os.path.isdir(path):
-            for root, dirnames, filenames in os.walk(path):
-                for filename in filenames:
-                    if is_jpg(filename):
-                        yield os.path.join(root, filename)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("dir")
@@ -106,7 +89,7 @@ if __name__ == '__main__':
 
     if args.processes > 1:
         p = Pool(args.processes)
-        p.map(checkAndRotate, findJpgs(args.dir))
+        p.map(checkAndRotate, jpgutil.findJpgs(args.dir))
     else:
-        for j in findJpgs(args.dir):
+        for j in jpgutil.findJpgs(args.dir):
             checkAndRotate(j)
