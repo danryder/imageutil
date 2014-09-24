@@ -100,10 +100,10 @@ headHTML = """\
             $.mobile.defaultPageTransition = "slide";
         });    
     </script>
-    <script src="mobile.js"></script>
+    <script src="%(jsfile)s"></script>
     <script src="https://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
     <style>%(imagemap)s </style>
-    <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="%(cssfile)s">
 </head>
 """
 
@@ -145,20 +145,23 @@ import subprocess
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("imagefile", nargs="*", help="path to images to include in output HTML page")
+    parser.add_argument("imagefile", nargs="+", help="paths to images to include in output HTML page")
+    parser.add_argument("-o", "--outfile", help="html file to write", default="mobile.html")
     parser.add_argument("-b", "--backlink", help="link to follow on exit")
     parser.add_argument("-m", "--meta", help="retrieve and show exif metadata", action="store_true")
     parser.add_argument("-t", "--title", help="page title")
     args = parser.parse_args()
 
     images = args.imagefile
+    image_paths = [os.path.relpath(i, os.path.dirname(args.outfile)) for i in images]
     n = len(images)
 
     # create support files
     # could inline since only making 1 HTML
-    file("mobile.js", "w").write(mobileJS)
-    file("mobile.css", "w").write(mobileCSS)
-    outfile = "mobile.html"
+    jsFile = args.outfile + '.js'
+    cssFile = args.outfile + '.css'
+    file(jsFile, "w").write(mobileJS)
+    file(cssFile, "w").write(mobileCSS)
 
     def makePageId(i):
         return "p%d" % i
@@ -174,7 +177,7 @@ if __name__ == "__main__":
 
     # make mobile-friendly page
     imagemap = ["/* Set background image sources */"]
-    imagemap.extend([ "#%s { background-image: url(%s); }" % (makePageId(i_ind), images[i_ind]) for i_ind in range(n) ])
+    imagemap.extend([ "#%s { background-image: url(%s); }" % (makePageId(i_ind), image_paths[i_ind]) for i_ind in range(n) ])
     
     if args.title:
         title = args.title
@@ -198,10 +201,12 @@ if __name__ == "__main__":
                 print "Ensure exiftool is installed"
                 print "Omitting EXIF metadata!"
 
-    print "Writing %s..." % outfile
-    with file(outfile, 'w') as o:
+    print "Writing %s..." % args.outfile
+    with file(args.outfile, 'w') as o:
         o.write("<!doctype html><html>")
         o.write(headHTML % {'title': title,
+                            'jsfile': os.path.basename(jsFile),
+                            'cssfile': os.path.basename(cssFile),
                             'imagemap':'\n'.join(imagemap) })
         o.write("<body>")
         for i in range(n):
