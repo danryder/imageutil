@@ -24,9 +24,11 @@ mobileJS = """\
             next = $( this ).jqmData( "next" ),
             prev = $( this ).jqmData( "prev" );
         
-        // prefetch next, prev images and set up swiping, buttons
+        // TODO: prefetch next image
+        // for prev, we set data-dom-cache="true" to keep it around
+
+        // set up swiping, buttons
         if ( next ) {
-            $.mobile.loadPage( "#" + next );
             $( document ).on( "swipeleft", page, function() {
                 $.mobile.changePage( "#" + next );
             });
@@ -37,7 +39,6 @@ mobileJS = """\
         else {
             $( ".control .next", page ).addClass( "ui-disabled" );
         }
-        // for prev, we set data-dom-cache="true" so there is no need to prefetch
         if ( prev ) {
             $( document ).on( "swiperight", page, function() {
                 $.mobile.changePage( "#" + prev, { reverse: true } );
@@ -49,6 +50,11 @@ mobileJS = """\
         else {
             $( ".control .prev", page ).addClass( "ui-disabled" );
         }
+        $( document ).on( "taphold", page, function() {
+                var img = $( page ).css('background-image')
+                var url = img.slice(img.indexOf('/gallery'), -2)
+                location.href = url;
+        });
     });
 """
 
@@ -95,9 +101,9 @@ headHTML = """\
     <script src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
     <script>
         // Bind to "mobileinit" before you load jquery.mobile.js
-        // Set the default transition to slide
+        // Set the default transition to slidefade
         $(document).on( "mobileinit", function() {
-            $.mobile.defaultPageTransition = "slide";
+            $.mobile.defaultPageTransition = "slidefade";
         });    
     </script>
     <script src="%(jsfile)s"></script>
